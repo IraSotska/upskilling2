@@ -8,11 +8,11 @@ import java.io.IOException;
 public class FileManager {
 
     public static int countFiles(String path) {
-        return countFilesByPath(path, 0);
+        return countFilesByPath(path);
     }
 
     public static int countDirs(String path) {
-        return countDirectoriesByPath(path, 0);
+        return countDirectoriesByPath(path);
     }
 
     public static void move(String from, String to) {
@@ -42,19 +42,9 @@ public class FileManager {
         }
     }
 
-    private static void createNewFileByPath(String path) {
-        try {
-            new File(path).createNewFile();
-        } catch (IOException e) {
-            throw new RuntimeException("Can't create new file at path: " + path, e);
-        }
-    }
-
     private static void copyFileContent(String pathFromCopy, String pathToCopy) {
-        createNewFileByPath(pathToCopy + pathFromCopy);
-
         try (var fileInputStream = new FileInputStream(pathFromCopy);
-             var fileOutputStream = new FileOutputStream(pathToCopy + pathFromCopy)) {
+             var fileOutputStream = new FileOutputStream(new File(pathToCopy, pathFromCopy))) {
             var buffer = new byte[1024];
             int length;
             while ((length = fileInputStream.read(buffer)) > 0) {
@@ -75,31 +65,33 @@ public class FileManager {
         file.delete();
     }
 
-    private static int countDirectoriesByPath(String path, int countFiles) {
+    private static int countDirectoriesByPath(String path) {
+        var directoriesCounter = 0;
         var files = new File(path).listFiles();
         if (files != null) {
             for (var file : files) {
                 if (file.isDirectory()) {
-                    countFiles++;
-                    countFiles += countFiles(file.getPath());
+                    directoriesCounter++;
+                    directoriesCounter += countFiles(file.getPath());
                 }
             }
         }
-        return countFiles;
+        return directoriesCounter;
     }
 
-    private static int countFilesByPath(String path, int countFiles) {
+    private static int countFilesByPath(String path) {
+        var filesCounter = 0;
         var files = new File(path).listFiles();
         if (files != null) {
             for (var file : files) {
                 if (file.isFile()) {
-                    countFiles++;
+                    filesCounter++;
                 }
                 if (file.isDirectory()) {
-                    countFiles += countFiles(file.getPath());
+                    filesCounter += countFilesByPath(file.getPath());
                 }
             }
         }
-        return countFiles;
+        return filesCounter;
     }
 }

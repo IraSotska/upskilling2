@@ -4,6 +4,7 @@ import java.io.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class FileAnalyzerService {
 
@@ -48,10 +49,9 @@ public class FileAnalyzerService {
     }
 
     protected long getCountOfWord(List<String> filteredSentences, String word) {
-        return filteredSentences.stream().map(filteredSentence -> {
-            var splittedWords = filteredSentence.split(" ");
-            return Arrays.stream(splittedWords).filter(splittedWord -> splittedWord.toLowerCase()
-                    .contains(word.toLowerCase())).count();
-        }).mapToLong(Long::longValue).sum();
+        return filteredSentences.stream()
+                .flatMap(filteredSentence -> Stream.of(filteredSentence.split(" ")))
+                .map(String::toLowerCase)
+                .filter(filteredWord -> filteredWord.contains(word.toLowerCase())).count();
     }
 }
