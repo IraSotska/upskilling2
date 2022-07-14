@@ -132,7 +132,7 @@ public class DefaultQueryGeneratorTest {
     @Test
     public void shouldThrowExceptionIfCreateUpdateQueryWithoutIdAnnotationTest() {
         assertThatThrownBy(() -> defaultQueryGenerator.update(new TestClassWithoutId()))
-                .hasMessage("Class don't have id.")
+                .hasMessage("Class must have one id. Current count of id: 0")
                 .isExactlyInstanceOf(IllegalArgumentException.class);
     }
 }

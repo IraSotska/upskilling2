@@ -5,8 +5,8 @@ import com.iryna.upskilling.orm.annotation.Id;
 import com.iryna.upskilling.orm.annotation.Table;
 
 import java.io.Serializable;
-import java.lang.reflect.Field;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class DefaultQueryGenerator implements QueryGenerator {
 
@@ -15,7 +15,7 @@ public class DefaultQueryGenerator implements QueryGenerator {
         checkIfORMClass(type);
 
         var queryBuilder = new StringBuilder("SELECT ");
-        queryBuilder.append(createValuesStringViaComma(getColumnNamesList(type)));
+        queryBuilder.append(createStringViaComma(getColumnNamesList(type)));
         queryBuilder.append(" FROM ");
         queryBuilder.append(getTableName(type));
         queryBuilder.append(";");
@@ -30,7 +30,7 @@ public class DefaultQueryGenerator implements QueryGenerator {
         var queryBuilder = new StringBuilder("SELECT * FROM ");
         queryBuilder.append(getTableName(type));
         queryBuilder.append(" WHERE id = ");
-        queryBuilder.append(id);
+        queryBuilder.append(addQuotesIfStringValue(id.getClass(), id.toString()));
         queryBuilder.append(";");
 
         return queryBuilder.toString();
@@ -43,45 +43,45 @@ public class DefaultQueryGenerator implements QueryGenerator {
         var queryBuilder = new StringBuilder("DELETE * FROM ");
         queryBuilder.append(getTableName(type));
         queryBuilder.append(" WHERE id = ");
-        queryBuilder.append(id);
+        queryBuilder.append(addQuotesIfStringValue(id.getClass(), id.toString()));
         queryBuilder.append(";");
 
         return queryBuilder.toString();
     }
 
     @Override
-    public String insert(Object value) {
-        checkIfORMClass(value.getClass());
+    public String insert(Object object) {
+        checkIfORMClass(object.getClass());
 
         var queryBuilder = new StringBuilder("INSERT INTO ");
-        queryBuilder.append(getTableName(value.getClass()));
+        queryBuilder.append(getTableName(object.getClass()));
         queryBuilder.append(" (");
-        queryBuilder.append(createValuesStringViaComma(getColumnNamesList(value.getClass())));
+        queryBuilder.append(createStringViaComma(getColumnNamesList(object.getClass())));
         queryBuilder.append(") VALUES (");
-        queryBuilder.append(createValuesStringViaComma(getFieldsValuesList(value)));
+        queryBuilder.append(createStringViaComma(getValuesOfFieldsList(object)));
         queryBuilder.append(");");
 
         return queryBuilder.toString();
     }
 
     @Override
-    public String update(Object value) {
-        checkIfORMClass(value.getClass());
+    public String update(Object object) {
+        checkIfORMClass(object.getClass());
 
         var stringJoiner = new StringJoiner(", ");
-        var fieldsNames = getColumnNamesList(value.getClass());
-        var fieldsValues = getFieldsValuesList(value);
+        var fieldsNames = getColumnNamesList(object.getClass());
+        var fieldsValues = getValuesOfFieldsList(object);
 
         for (int i = 0; i < fieldsNames.size(); i++) {
             stringJoiner.add(fieldsNames.get(i) + " = " + fieldsValues.get(i));
         }
 
         var queryBuilder = new StringBuilder("UPDATE ");
-        queryBuilder.append(getTableName(value.getClass()));
+        queryBuilder.append(getTableName(object.getClass()));
         queryBuilder.append(" SET ");
         queryBuilder.append(stringJoiner);
         queryBuilder.append(" WHERE id = ");
-        queryBuilder.append(getObjectId(value));
+        queryBuilder.append(addQuotesIfStringValue(object.getClass(), getIdFromObject(object)));
         queryBuilder.append(";");
 
         return queryBuilder.toString();
@@ -95,7 +95,7 @@ public class DefaultQueryGenerator implements QueryGenerator {
 
     private List<String> getColumnNamesList(Class<?> clazz) {
         var result = new ArrayList<String>();
-        for (Field field : clazz.getDeclaredFields()) {
+        for (var field : clazz.getDeclaredFields()) {
             var columnAnnotation = field.getAnnotation(Column.class);
             if (columnAnnotation != null) {
                 result.add(Objects.equals(columnAnnotation.name(), "") ? field.getName() : columnAnnotation.name());
@@ -104,32 +104,33 @@ public class DefaultQueryGenerator implements QueryGenerator {
         return result;
     }
 
-    private List<String> getFieldsValuesList(Object value) {
+    private List<String> getValuesOfFieldsList(Object object) {
         var result = new ArrayList<String>();
 
-        for (var field : value.getClass().getDeclaredFields()) {
+        for (var field : object.getClass().getDeclaredFields()) {
             var columnAnnotation = field.getAnnotation(Column.class);
-            if (columnAnnotation != null) {
-                field.setAccessible(true);
-                try {
-                    var fieldValue = field.get(value).toString();
-                    if (String.class.equals(field.getType()) || char.class.equals(field.getType())) {
-                        fieldValue = "'" + fieldValue + "'";
-                    }
-                    result.add(fieldValue);
-                } catch (IllegalAccessException e) {
-                    e.printStackTrace();
-                }
+            if (columnAnnotation == null) {
+                continue;
+            }
+            field.setAccessible(true);
+            try {
+                var fieldValue = field.get(object).toString();
+                fieldValue = addQuotesIfStringValue(field.getType(), fieldValue);
+                result.add(fieldValue);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException("Don't have access to field: " + field.getName(), e);
             }
         }
         return result;
     }
 
-    private String createValuesStringViaComma(List<String> values) {
+    private String addQuotesIfStringValue(Class<?> type, String value) {
+        return CharSequence.class.isAssignableFrom(type) ? "'" + value + "'" : value;
+    }
+
+    private String createStringViaComma(List<String> values) {
         var stringJoiner = new StringJoiner(", ");
-        for (String value : values) {
-            stringJoiner.add(value);
-        }
+        values.forEach(stringJoiner::add);
         return stringJoiner.toString();
     }
 
@@ -138,18 +139,20 @@ public class DefaultQueryGenerator implements QueryGenerator {
         return tableAnnotation == null ? clazz.getSimpleName() : tableAnnotation.name();
     }
 
-    private String getObjectId(Object value) {
-        var idField = Arrays.stream(value.getClass().getDeclaredFields())
-                .filter(field -> field.getAnnotation(Id.class) != null).findFirst();
+    private String getIdFromObject(Object object) {
+        var idFieldList = Arrays.stream(object.getClass().getDeclaredFields())
+                .filter(field -> field.getAnnotation(Id.class) != null).collect(Collectors.toList());
 
-        if (idField.isPresent()) {
-            idField.get().setAccessible(true);
-            try {
-                return idField.get().get(value).toString();
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            }
+        if (idFieldList.size() != 1) {
+            throw new IllegalArgumentException("Class must have one id. Current count of id: " + idFieldList.size());
         }
-        throw new IllegalArgumentException("Class don't have id.");
+
+        var idField = idFieldList.get(0);
+        idField.setAccessible(true);
+        try {
+            return idField.get(object).toString();
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException("Don't have access to field: " + idFieldList.get((Integer) object).getName(), e);
+        }
     }
 }
