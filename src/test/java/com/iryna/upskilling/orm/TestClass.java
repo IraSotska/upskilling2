@@ -31,4 +31,20 @@ public class TestClass {
 
     @Column(name = "test_field")
     private String testField;
+
+    public Long getIdToUpdate() {
+        return idToUpdate;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getTestField() {
+        return testField;
+    }
 }

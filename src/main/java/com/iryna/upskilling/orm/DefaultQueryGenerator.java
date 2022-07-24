@@ -5,6 +5,7 @@ import com.iryna.upskilling.orm.annotation.Id;
 import com.iryna.upskilling.orm.annotation.Table;
 
 import java.io.Serializable;
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -89,39 +90,38 @@ public class DefaultQueryGenerator implements QueryGenerator {
 
     private void checkIfORMClass(Class<?> clazz) {
         if (clazz.getAnnotation(Table.class) == null) {
-            throw new IllegalArgumentException("Class is not ORM entity.");
+            throw new IllegalArgumentException("ORM class must have table annotation.");
+        }
+
+        var idFieldListSize = Arrays.stream(clazz.getDeclaredFields())
+                .filter(field -> field.getAnnotation(Id.class) != null).collect(Collectors.toList()).size();
+
+        if (idFieldListSize > 1) {
+            throw new IllegalArgumentException("Class must have one id. Current count of id: " + idFieldListSize);
+        }
+
+        if (idFieldListSize < 1) {
+            throw new IllegalArgumentException("ORM class must have id annotation.");
         }
     }
 
     private List<String> getColumnNamesList(Class<?> clazz) {
-        var result = new ArrayList<String>();
-        for (var field : clazz.getDeclaredFields()) {
-            var columnAnnotation = field.getAnnotation(Column.class);
-            if (columnAnnotation != null) {
-                result.add(Objects.equals(columnAnnotation.name(), "") ? field.getName() : columnAnnotation.name());
-            }
-        }
-        return result;
+        return getColumnFieldsList(clazz).stream()
+                .map(field -> field.getAnnotation(Column.class).name().isEmpty() ?
+                        field.getName() :
+                        field.getAnnotation(Column.class).name())
+                .collect(Collectors.toList());
     }
 
     private List<String> getValuesOfFieldsList(Object object) {
-        var result = new ArrayList<String>();
+        return getColumnFieldsList(object.getClass()).stream()
+                .map(field -> addQuotesIfStringValue(field.getType(), getFieldValue(object, field)))
+                .collect(Collectors.toList());
+    }
 
-        for (var field : object.getClass().getDeclaredFields()) {
-            var columnAnnotation = field.getAnnotation(Column.class);
-            if (columnAnnotation == null) {
-                continue;
-            }
-            field.setAccessible(true);
-            try {
-                var fieldValue = field.get(object).toString();
-                fieldValue = addQuotesIfStringValue(field.getType(), fieldValue);
-                result.add(fieldValue);
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException("Don't have access to field: " + field.getName(), e);
-            }
-        }
-        return result;
+    private List<Field> getColumnFieldsList(Class<?> clazz) {
+        return Arrays.stream(clazz.getDeclaredFields())
+                .filter(field -> field.getAnnotation(Column.class) != null).collect(Collectors.toList());
     }
 
     private String addQuotesIfStringValue(Class<?> type, String value) {
@@ -140,19 +140,18 @@ public class DefaultQueryGenerator implements QueryGenerator {
     }
 
     private String getIdFromObject(Object object) {
-        var idFieldList = Arrays.stream(object.getClass().getDeclaredFields())
-                .filter(field -> field.getAnnotation(Id.class) != null).collect(Collectors.toList());
+        return getFieldValue(object, Arrays.stream(object.getClass().getDeclaredFields())
+                .filter(field -> field.getAnnotation(Id.class) != null).collect(Collectors.toList()).get(0));
+    }
 
-        if (idFieldList.size() != 1) {
-            throw new IllegalArgumentException("Class must have one id. Current count of id: " + idFieldList.size());
-        }
-
-        var idField = idFieldList.get(0);
-        idField.setAccessible(true);
+    private String getFieldValue(Object object, Field field) {
         try {
-            return idField.get(object).toString();
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException("Don't have access to field: " + idFieldList.get((Integer) object).getName(), e);
+            var fieldName = field.getName();
+            var getterName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+
+            return object.getClass().getDeclaredMethod(getterName).invoke(object).toString();
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Can't get field value for field: " + field.getName(), e);
         }
     }
 }

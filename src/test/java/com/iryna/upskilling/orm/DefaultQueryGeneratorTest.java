@@ -37,7 +37,39 @@ public class DefaultQueryGeneratorTest {
     @Test
     public void shouldThrowExceptionIfCreateQueryGetAllWithoutTableAnnotationTest() {
         assertThatThrownBy(() -> defaultQueryGenerator.findAll(DefaultQueryGeneratorTest.class))
-                .hasMessage("Class is not ORM entity.")
+                .hasMessage("ORM class must have table annotation.")
+                .isExactlyInstanceOf(IllegalArgumentException.class);
+    }
+
+    @DisplayName("Should Throw Exception If Create Query Insert Without Field Getter Test")
+    @Test
+    public void shouldThrowExceptionIfCreateQueryInsertWithoutFieldGetterTest() {
+        assertThatThrownBy(() -> defaultQueryGenerator.insert(new TestClassWithoutGetter()))
+                .hasMessage("Can't get field value for field: name")
+                .isExactlyInstanceOf(IllegalArgumentException.class);
+    }
+
+    @DisplayName("Should Throw Exception If Create Query Update Without Field Getter Test")
+    @Test
+    public void shouldThrowExceptionIfInsertQueryUpdateWithoutFieldGetterTest() {
+        assertThatThrownBy(() -> defaultQueryGenerator.update(new TestClassWithoutGetter()))
+                .hasMessage("Can't get field value for field: name")
+                .isExactlyInstanceOf(IllegalArgumentException.class);
+    }
+
+    @DisplayName("Should Throw Exception If Create Get All Query Without Id Annotation Test")
+    @Test
+    public void shouldThrowExceptionIfCreateGetAllQueryWithoutIdAnnotationTest() {
+        assertThatThrownBy(() -> defaultQueryGenerator.findAll(TestClassWithoutId.class))
+                .hasMessage("ORM class must have id annotation.")
+                .isExactlyInstanceOf(IllegalArgumentException.class);
+    }
+
+    @DisplayName("Should Throw Exception If Create Find All Query With Multiple Id Annotation Test")
+    @Test
+    public void shouldThrowExceptionIfCreateGetAllQueryWithMultipleIdAnnotationTest() {
+        assertThatThrownBy(() -> defaultQueryGenerator.findAll(TestClassWithMultipleId.class))
+                .hasMessage("Class must have one id. Current count of id: 3")
                 .isExactlyInstanceOf(IllegalArgumentException.class);
     }
 
@@ -54,7 +86,23 @@ public class DefaultQueryGeneratorTest {
     @Test
     public void shouldThrowExceptionIfCreateQueryFindByIdWithoutTableAnnotationTest() {
         assertThatThrownBy(() -> defaultQueryGenerator.findById(DefaultQueryGeneratorTest.class, 1L))
-                .hasMessage("Class is not ORM entity.")
+                .hasMessage("ORM class must have table annotation.")
+                .isExactlyInstanceOf(IllegalArgumentException.class);
+    }
+
+    @DisplayName("Should Throw Exception If Create Find By Id Query Without Id Annotation Test")
+    @Test
+    public void shouldThrowExceptionIfCreateFindByIdQueryWithoutIdAnnotationTest() {
+        assertThatThrownBy(() -> defaultQueryGenerator.findById(TestClassWithoutId.class, 1L))
+                .hasMessage("ORM class must have id annotation.")
+                .isExactlyInstanceOf(IllegalArgumentException.class);
+    }
+
+    @DisplayName("Should Throw Exception If Create Find By Id Query With Multiple Id Annotation Test")
+    @Test
+    public void shouldThrowExceptionIfCreateFindByIdQueryWithMultipleIdAnnotationTest() {
+        assertThatThrownBy(() -> defaultQueryGenerator.findById(TestClassWithMultipleId.class, 1L))
+                .hasMessage("Class must have one id. Current count of id: 3")
                 .isExactlyInstanceOf(IllegalArgumentException.class);
     }
 
@@ -71,7 +119,23 @@ public class DefaultQueryGeneratorTest {
     @Test
     public void shouldThrowExceptionIfCreateQueryDeleteByIdWithoutTableAnnotationTest() {
         assertThatThrownBy(() -> defaultQueryGenerator.deleteById(DefaultQueryGeneratorTest.class, 1L))
-                .hasMessage("Class is not ORM entity.")
+                .hasMessage("ORM class must have table annotation.")
+                .isExactlyInstanceOf(IllegalArgumentException.class);
+    }
+
+    @DisplayName("Should Throw Exception If Create Delete Query Without Id Annotation Test")
+    @Test
+    public void shouldThrowExceptionIfCreateDeleteQueryWithoutIdAnnotationTest() {
+        assertThatThrownBy(() -> defaultQueryGenerator.deleteById(TestClassWithoutId.class, 1L))
+                .hasMessage("ORM class must have id annotation.")
+                .isExactlyInstanceOf(IllegalArgumentException.class);
+    }
+
+    @DisplayName("Should Throw Exception If Create Delete Query With Multiple Id Annotation Test")
+    @Test
+    public void shouldThrowExceptionIfCreateDeleteQueryWithMultipleIdAnnotationTest() {
+        assertThatThrownBy(() -> defaultQueryGenerator.deleteById(TestClassWithMultipleId.class, 1L))
+                .hasMessage("Class must have one id. Current count of id: 3")
                 .isExactlyInstanceOf(IllegalArgumentException.class);
     }
 
@@ -99,7 +163,23 @@ public class DefaultQueryGeneratorTest {
     @Test
     public void shouldThrowExceptionIfCreateInsertQueryWithoutTableAnnotationTest() {
         assertThatThrownBy(() -> defaultQueryGenerator.insert(new DefaultQueryGeneratorTest()))
-                .hasMessage("Class is not ORM entity.")
+                .hasMessage("ORM class must have table annotation.")
+                .isExactlyInstanceOf(IllegalArgumentException.class);
+    }
+
+    @DisplayName("Should Throw Exception If Create Insert Query Without Id Annotation Test")
+    @Test
+    public void shouldThrowExceptionIfCreateInsertQueryWithoutIdAnnotationTest() {
+        assertThatThrownBy(() -> defaultQueryGenerator.insert(new TestClassWithoutId()))
+                .hasMessage("ORM class must have id annotation.")
+                .isExactlyInstanceOf(IllegalArgumentException.class);
+    }
+
+    @DisplayName("Should Throw Exception If Create Insert Query With Multiple Id Annotation Test")
+    @Test
+    public void shouldThrowExceptionIfCreateInsertQueryWithMultipleIdAnnotationTest() {
+        assertThatThrownBy(() -> defaultQueryGenerator.insert(new TestClassWithMultipleId()))
+                .hasMessage("Class must have one id. Current count of id: 3")
                 .isExactlyInstanceOf(IllegalArgumentException.class);
     }
 
@@ -124,7 +204,7 @@ public class DefaultQueryGeneratorTest {
     @Test
     public void shouldThrowExceptionIfCreateUpdateQueryWithoutTableAnnotationTest() {
         assertThatThrownBy(() -> defaultQueryGenerator.update(DefaultQueryGeneratorTest.class))
-                .hasMessage("Class is not ORM entity.")
+                .hasMessage("ORM class must have table annotation.")
                 .isExactlyInstanceOf(IllegalArgumentException.class);
     }
 
@@ -132,7 +212,15 @@ public class DefaultQueryGeneratorTest {
     @Test
     public void shouldThrowExceptionIfCreateUpdateQueryWithoutIdAnnotationTest() {
         assertThatThrownBy(() -> defaultQueryGenerator.update(new TestClassWithoutId()))
-                .hasMessage("Class must have one id. Current count of id: 0")
+                .hasMessage("ORM class must have id annotation.")
+                .isExactlyInstanceOf(IllegalArgumentException.class);
+    }
+
+    @DisplayName("Should Throw Exception If Update Insert Query With Multiple Id Annotation Test")
+    @Test
+    public void shouldThrowExceptionIfCreateUpdateQueryWithMultipleIdAnnotationTest() {
+        assertThatThrownBy(() -> defaultQueryGenerator.update(new TestClassWithMultipleId()))
+                .hasMessage("Class must have one id. Current count of id: 3")
                 .isExactlyInstanceOf(IllegalArgumentException.class);
     }
 }
