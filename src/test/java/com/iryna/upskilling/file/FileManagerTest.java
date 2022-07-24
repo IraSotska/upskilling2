@@ -96,11 +96,9 @@ class FileManagerTest {
         compareFileContent("/dir2/dir1");
     }
 
-    private void createFileWithContent(String path, String content) {
+    private void createFileWithContent(String path, String content) throws IOException {
         try (var bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(path))) {
             bufferedOutputStream.write(content.getBytes());
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
@@ -121,13 +119,13 @@ class FileManagerTest {
 
     private String getFileContent(String path) throws IOException {
         var result = new StringBuilder();
-        var bufferedInputStream = new BufferedInputStream(new FileInputStream(path));
-        var content = new byte[1024];
-        int bytesRead;
-        while ((bytesRead = bufferedInputStream.read(content)) != -1) {
-            result.append(new String(content, 0, bytesRead));
+        try(var bufferedInputStream = new BufferedInputStream(new FileInputStream(path))){
+            var content = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = bufferedInputStream.read(content)) != -1) {
+                result.append(new String(content, 0, bytesRead));
+            }
         }
-
         return result.toString();
     }
 }
